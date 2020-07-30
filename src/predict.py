@@ -55,24 +55,25 @@ def predict(threshold=0.5, batchSize=4):
             # cv2.waitKey()
             index += 1
 
-def predictScan(tifPath):
+def predictScan(tifPath, scanPath):
     x, oriX = prepareScanForPredict(tifPath)
-    weights_folder = os.path.join('..', 'weights')
-    if not os.path.exists(weights_folder):
-        os.mkdir(weights_folder)
-    scan_folder = os.path.join('..', 'scan')
+
+    scan_folder = scanPath
     if not os.path.exists(scan_folder):
         os.mkdir(scan_folder)
+    assert os.path.isdir(scan_folder)
     inputs, xception_inputs, ans = get_model()
     m = Model(inputs=[inputs, xception_inputs], outputs=[ans])
+    weights_folder = os.path.join('..', 'weights')
+    assert os.path.exists(weights_folder)
     best_model_weights = os.path.join(weights_folder,
                                       [item for item in os.listdir(weights_folder) if ".index" in item][0].replace(
                                           ".index", ""))
     m.load_weights(best_model_weights)
     print("Weights have been loaded!")
-    predictions = m.predict(x, batch_size=4)
-
-    for i in range(predictions.shape[0]):
+    predictions = m.predict(x, batch_size=4, verbose=1)
+    print("Writing Predicted results...")
+    for i in tqdm(range(predictions.shape[0])):
         prediction = label2Color(predict2Mask(predictions[i]))
         # input = np.asarray(x[0][i], dtype='uint8')
         input = oriX[i]
@@ -97,7 +98,7 @@ def calculateVolume(tifPath,
                 numDict[key] = 0
             mask = np.all(imgArray == colorDict[key], axis=-1)
             numDict[key] += np.asarray(mask, dtype=np.float).sum() * widthRatio * heightRatio * thicknessRatio
-    print(numDict)
+    # print(numDict)
     return numDict
 
 def dict2Piechart(volumePath, resultDict):
@@ -159,10 +160,11 @@ if __name__ == '__main__':
     args.add_argument('-step', '--stepThickness', type=float, default=0.005,
                       help='thinkness, step interval')
 
+
     parsed_arg = args.parse_args()
     if parsed_arg.tifScanPath:
-        predictScan(parsed_arg.tifScanPath)
-    elif parsed_arg.tifVolumePath:
+        predictScan(parsed_arg.tifScanPath, parsed_arg.tifVolumePath)
+    if parsed_arg.tifVolumePath:
         dataDict = calculateVolume(parsed_arg.tifVolumePath,
                                    rawImageShape=(parsed_arg.rawWidth, parsed_arg.rawHeight),
                                    thicknessRatio=parsed_arg.stepThickness)

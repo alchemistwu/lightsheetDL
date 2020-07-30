@@ -21,15 +21,25 @@ except:
 
 
 
-def train(learning_rate=0.001, batchSize=32, epochs=100):
+def train(train_txt=os.path.join("..", "dataset", "train.txt"),
+          val_txt=os.path.join("..", "dataset", "val.txt"),
+          learning_rate=0.001, batchSize=32, epochs=100, result_file_path=None,
+          fine_tune=False):
     weights_folder = os.path.join('..', 'weights')
     if not os.path.exists(weights_folder):
         os.mkdir(weights_folder)
-    train_txt = os.path.join("..", "dataset", "train.txt")
-    val_txt = os.path.join("..", "dataset", "val.txt")
+
     inputs, xception_inputs, ans = get_model()
     callbackList = [ModelCheckpoint(os.path.join(weights_folder, 'model.tf'), save_best_only=True, save_weights_only=True)]
     m = Model(inputs=[inputs, xception_inputs], outputs=[ans])
+    if fine_tune:
+        weights_folder = os.path.join('..', 'weights')
+        assert os.path.exists(weights_folder)
+        best_model_weights = os.path.join(weights_folder,
+                                          [item for item in os.listdir(weights_folder) if ".index" in item][0].replace(
+                                              ".index", ""))
+        m.load_weights(best_model_weights)
+        print("Weights have been loaded!")
 
     def categorical_crossentropy(y_true, y_pred):
         return tensorflow.keras.backend.categorical_crossentropy(y_true, y_pred, from_logits=True)
@@ -48,18 +58,17 @@ def train(learning_rate=0.001, batchSize=32, epochs=100):
                                       epochs=epochs, validation_data=val_generator,
                                   validation_steps=val_steps,
                                       callbacks=callbackList)
-    write_summary(history)
+    if result_file_path:
+        write_summary(history, result_file_path)
+    else:
+        write_summary(history)
 
-def write_summary(history):
-    folder = os.path.join('logs')
-    if not os.path.exists(folder):
-        os.mkdir(folder)
-
+def write_summary(history, result_file_path=os.path.join('logs', "logs.txt")):
     loss = history.history['loss']
     val_loss = history.history['val_loss']
     acc = history.history['accuracy']
     val_acc = history.history['val_accuracy']
-    result_file_path = os.path.join(folder, "logs.txt")
+
     result_file = open(result_file_path, 'w')
     for i in range(0, len(loss)):
         result_file.write(
@@ -77,8 +86,22 @@ if __name__ == '__main__':
     args.add_argument('-batches', '--batch_size', type=int, default=8,
                       help='Number of batches per train')
 
+    args.add_argument('-train', '--train_file', type=str, default=os.path.join("..", "dataset", "additional_train_corrected.txt"),
+                      help='Path to train txt file')
+
+    args.add_argument('-val', '--val_file', type=str, default=os.path.join("..", "dataset", "additional_val_corrected.txt"),
+                      help='Path to val txt file')
+
+    args.add_argument('-log', '--log_file', type=str, default=os.path.join("logs", "logs4.txt"),
+                      help='Path to log file')
+
+    args.add_argument('-tune', '--fine_tune', type=str, default='False',
+                      help='Whether use pretrained weights to fine_tune(Otherwise use default imagenet weights.)')
+
     parsed_arg = args.parse_args()
 
+    fine_tune = True if parsed_arg.fine_tune == "True" else False
 
     train(batchSize=parsed_arg.batch_size,
-          epochs=parsed_arg.epochs)
+          epochs=parsed_arg.epochs, train_txt=parsed_arg.train_file, val_txt=parsed_arg.val_file,
+          result_file_path=parsed_arg.log_file, fine_tune=fine_tune)
