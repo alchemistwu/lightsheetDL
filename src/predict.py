@@ -167,7 +167,9 @@ if __name__ == '__main__':
     if parsed_arg.tifVolumePath:
         dataDict = calculateVolume(parsed_arg.tifVolumePath,
                                    rawImageShape=(parsed_arg.rawWidth, parsed_arg.rawHeight),
-                                   thicknessRatio=parsed_arg.stepThickness)
+                                   thicknessRatio=parsed_arg.stepThickness,
+                                   widthRatio=0.7248059527283338 * 0.001,
+                                   heightRatio=0.728716428322288 * 0.001)
         if parsed_arg.pie == 1:
             dict2Piechart(parsed_arg.tifVolumePath, dataDict)
     else:

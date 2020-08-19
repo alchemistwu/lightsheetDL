@@ -92,7 +92,7 @@ if __name__ == '__main__':
     args.add_argument('-val', '--val_file', type=str, default=os.path.join("..", "dataset", "additional_val_corrected.txt"),
                       help='Path to val txt file')
 
-    args.add_argument('-log', '--log_file', type=str, default=os.path.join("logs", "logs4.txt"),
+    args.add_argument('-log', '--log_file', type=str, default=os.path.join("logs", "logs5.txt"),
                       help='Path to log file')
 
     args.add_argument('-tune', '--fine_tune', type=str, default='False',

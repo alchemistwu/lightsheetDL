@@ -174,14 +174,23 @@ def data_generator(txtPath, batchSize=1, debug=False, aug=True):
     imgPaths, labelPaths = loadSplitTxt(txtPath)
     index = 0
     num_samples = len(imgPaths)
+    # you ain't shit frank
+    index_list = list(range(num_samples))
+    random.shuffle(index_list)
     while True:
         if index * batchSize >= num_samples:
             index = 0
+            random.shuffle(index_list)
+
         batch_start = index * batchSize
         batch_end = (index + 1) * batchSize
         if batch_end > num_samples:
             batch_end = num_samples
-        batchPathX, batchPathY = imgPaths[batch_start: batch_end], labelPaths[batch_start: batch_end]
+
+        # batchPathX, batchPathY = imgPaths[batch_start: batch_end], labelPaths[batch_start: batch_end]
+        batchPathX, batchPathY = [imgPaths[item] for item in index_list[batch_start: batch_end]], \
+                                 [labelPaths[item] for item in index_list[batch_start: batch_end]]
+
         batchX, batchY = [], []
         for imgPath, labelPath in zip(batchPathX, batchPathY):
 
@@ -268,18 +277,19 @@ if __name__ == '__main__':
     #     train_steps = len(f.readlines()) // 16 + 1
     # for i in range(train_steps):
     #     next(train_generator)
-    # saveFolder = os.path.join('..', 'dataset', 'additional_images_2')
-    #
+    # saveFolder = os.path.join('..', 'dataset', 'additional_images_3')
     # generateImages(saveFolder=saveFolder)
 
-    generateMasks(os.path.join('..', 'dataset', 'additional_images_2'),
-                  os.path.join('..', 'dataset', 'additional_json_2'),
-                  os.path.join('..', 'dataset', 'additional_label_2')
+    generateMasks(os.path.join('..', 'dataset', 'additional_images_3'),
+                  os.path.join('..', 'dataset', 'additional_json_3'),
+                  os.path.join('..', 'dataset', 'additional_label_3')
                   )
-    genTxtTrainingSplit(imgFolder=os.path.join('..', 'dataset', 'additional_images_2'),
-                        labelFolder = os.path.join('..', 'dataset', 'additional_label_2'),
-                        fTrain = open(os.path.join('..', 'dataset', 'additional_2_train.txt'), 'w'),
-                        fVal = open(os.path.join('..', 'dataset', 'additional_2_val.txt'), 'w'))
+
+    genTxtTrainingSplit(imgFolder=os.path.join('..', 'dataset', 'additional_images_3'),
+                        labelFolder = os.path.join('..', 'dataset', 'additional_label_3'),
+                        fTrain = open(os.path.join('..', 'dataset', 'additional_3_train.txt'), 'w'),
+                        fVal = open(os.path.join('..', 'dataset', 'additional_3_val.txt'), 'w'))
+
     # genTxtTrainingSplit(imgFolder=os.path.join('..', 'dataset', 'images'),
     #                     labelFolder=os.path.join('..', 'dataset', 'label'),
     #                     fTrain=open(os.path.join('..', 'dataset', 'train.txt'), 'w'),
