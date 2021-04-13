@@ -252,7 +252,9 @@ def gui_entrance():
             self.layout_main.addWidget(self.btnCal, 14, 0)
 
             self.setCentralWidget(self.widget_main)
-
+            self.textinput_height_ratio.setText("1.43")
+            self.textinput_width_ratio.setText("1.43")
+            self.textinput_depth_ratio.setText("5.")
             self.show()
 
         def choosePath(self, file=False):

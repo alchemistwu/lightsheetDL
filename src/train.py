@@ -83,7 +83,7 @@ if __name__ == '__main__':
     args.add_argument('-eph', '--epochs', type=int, default=100,
                       help='Number of epochs')
 
-    args.add_argument('-batches', '--batch_size', type=int, default=8,
+    args.add_argument('-batches', '--batch_size', type=int, default=4,
                       help='Number of batches per train')
 
     args.add_argument('-train', '--train_file', type=str, default=os.path.join("..", "dataset", "additional_train_corrected.txt"),
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     args.add_argument('-val', '--val_file', type=str, default=os.path.join("..", "dataset", "additional_val_corrected.txt"),
                       help='Path to val txt file')
 
-    args.add_argument('-log', '--log_file', type=str, default=os.path.join("logs", "logs5.txt"),
+    args.add_argument('-log', '--log_file', type=str, default=os.path.join("logs", "logs.txt"),
                       help='Path to log file')
 
     args.add_argument('-tune', '--fine_tune', type=str, default='False',

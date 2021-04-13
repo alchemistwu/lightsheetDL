@@ -6,7 +6,8 @@ import urllib
 import json
 import copy
 import random
-
+from func_timeout import func_set_timeout
+import time
 LABEL_DICT = {'background': 0, 'normal': 1, 'stroke': 2}
 COLOR_DICT = {'background': (0, 0, 0), 'normal': (0, 255, 0), 'stroke': (255, 0, 0)}
 
@@ -41,17 +42,18 @@ def readTif(tifPath, keepThreshold=100, imgShape=(608, 608), filterDark=True, re
     else:
         return processedStacks
 
-def saveTifStack(tifStack, saveFolder, startID=None):
+def saveTifStack(tifStack, saveFolder, fix=""):
     if not os.path.exists(saveFolder):
         os.mkdir(saveFolder)
     assert os.path.isdir(saveFolder)
-    if not startID:
-        imgID = len(os.listdir(saveFolder))
-    else:
-        imgID = startID
-    for tif in tifStack:
-        cv2.imwrite(os.path.join(saveFolder, str(imgID) + '.png'), tif)
-        imgID += 1
+    # if not startID:
+    #     imgID = len(os.listdir(saveFolder))
+    # else:
+    #     imgID = startID
+    for i in range(len(list(tifStack))):
+        tif = tifStack[i]
+        cv2.imwrite(os.path.join(saveFolder, fix + "_" + str(i) + '.png'), tif)
+        # imgID += 1
 
 def generateImages(tifFolder=None, saveFolder=None, startID=None):
     if not tifFolder:
@@ -62,11 +64,14 @@ def generateImages(tifFolder=None, saveFolder=None, startID=None):
         os.mkdir(saveFolder)
     tifPaths = [os.path.join(tifFolder, file) for file in os.listdir(tifFolder) if file.endswith('.tif')]
     for tifPath in tifPaths:
-        tifStack = readTif(tifPath)
-        if startID:
-            saveTifStack(tifStack, saveFolder, startID)
-        saveTifStack(tifStack, saveFolder)
+        tifStack = readTif(tifPath, filterDark=False)
+        fixname = os.path.basename(tifPath).split('.tif')[0]
 
+        saveTifStack(tifStack, saveFolder, fix=fixname)
+
+@func_set_timeout(60)
+def download_label(url, savepath):
+    urllib.request.urlretrieve(url, savepath)
 
 def generateMasks(imgFolder=os.path.join('..', 'dataset', 'images'),
                   jsonFolder=os.path.join('..', 'dataset', 'json'),
@@ -80,12 +85,14 @@ def generateMasks(imgFolder=os.path.join('..', 'dataset', 'images'),
         os.mkdir(tmpFolder)
     if not os.path.exists(labelFolder):
         os.mkdir(labelFolder)
+    counter_download = 0
 
     for key in labelDict.keys():
         failFlag = False
         if not labelDict[key]:
             if os.path.exists(os.path.join(imgFolder, key)):
-                os.remove(os.path.join(imgFolder, key))
+                pass
+                # os.remove(os.path.join(imgFolder, key))
         else:
             initMask = np.zeros(shape=(imgShape[0], imgShape[1], numClass), dtype='uint8')
             for labelKey in labelDict[key].keys():
@@ -94,18 +101,23 @@ def generateMasks(imgFolder=os.path.join('..', 'dataset', 'images'),
                 retryTimes = 0
                 while not os.path.exists(os.path.join(tmpFolder, labelKey + '.png')):
                     try:
-                        urllib.request.urlretrieve(labelDict[key][labelKey], os.path.join(tmpFolder, labelKey + '.png'))
+                        time.sleep(random.randint(0, 10))
+                        # urllib.request.urlretrieve(labelDict[key][labelKey], os.path.join(tmpFolder, labelKey + '.png'))
+                        download_label(labelDict[key][labelKey], os.path.join(tmpFolder, labelKey + '.png'))
+                        counter_download += 1
+                        print("Downloaded: %04d"%counter_download)
                     except:
                         print(labelDict[key][labelKey])
-                        print("retrying...")
                         retryTimes += 1
+                        print("retrying the %d th time" % retryTimes)
                         if retryTimes > patient:
                             failFlag = True
                             break
                 if failFlag:
-                    if os.path.exists(os.path.join(imgFolder, key)):
-                        os.remove(os.path.join(imgFolder, key))
-                    break
+                    pass
+                    # if os.path.exists(os.path.join(imgFolder, key)):
+                    #     os.remove(os.path.join(imgFolder, key))
+                    # break
                 else:
                     labelImage = cv2.imread(os.path.join(tmpFolder, labelKey + '.png'), cv2.IMREAD_GRAYSCALE)
                     initMask[:, :, LABEL_DICT[labelKey]][np.equal(labelImage, 255)] = 1
@@ -129,11 +141,18 @@ def loadJson(jsonFolder):
             extractedItems[item['External ID']] = labels
     return extractedItems
 
-def label2Color(labelMask):
+def label2Color(labelMask, background=True, normal=True, stroke=True):
     copyMask = copy.deepcopy(labelMask)
     canvas = np.zeros(shape=(copyMask.shape[0], copyMask.shape[1], 3), dtype='uint8')
     # print(copyMask.shape)
-    for key in LABEL_DICT.keys():
+    tmp_keys = []
+    if background:
+        tmp_keys.append('background')
+    if normal:
+        tmp_keys.append('normal')
+    if stroke:
+        tmp_keys.append('stroke')
+    for key in tmp_keys:
         canvas[copyMask[:, :, LABEL_DICT[key]] == 1, :] = COLOR_DICT[key]
     return canvas
 
@@ -166,8 +185,13 @@ def loadSplitTxt(txtPath):
         random.shuffle(lines)
         for line in lines:
             item = line.strip("\n")
-            imgPaths.append(item.split('#')[0])
-            labelPaths.append(item.split('#')[1])
+            try:
+                tmp_image = item.split('#')[0]
+                tmp_label = item.split('#')[1]
+                imgPaths.append(tmp_image)
+                labelPaths.append(tmp_label)
+            except:
+                pass
     return imgPaths, labelPaths
 
 def data_generator(txtPath, batchSize=1, debug=False, aug=True):
@@ -270,6 +294,7 @@ def getAugmentationParameters():
 
 
 if __name__ == '__main__':
+
     # generateImages()
     # train_txt = os.path.join("..", "dataset", "train.txt")
     # train_generator = data_generator(train_txt, batchSize=16, debug=True)
@@ -277,18 +302,18 @@ if __name__ == '__main__':
     #     train_steps = len(f.readlines()) // 16 + 1
     # for i in range(train_steps):
     #     next(train_generator)
-    # saveFolder = os.path.join('..', 'dataset', 'additional_images_3')
+    # saveFolder = os.path.join('..', 'dataset', 'image_1215')
     # generateImages(saveFolder=saveFolder)
 
-    generateMasks(os.path.join('..', 'dataset', 'additional_images_3'),
-                  os.path.join('..', 'dataset', 'additional_json_3'),
-                  os.path.join('..', 'dataset', 'additional_label_3')
-                  )
+    # generateMasks(os.path.join('..', 'dataset', 'image_1215'),
+    #               os.path.join('..', 'dataset', 'json_1215'),
+    #               os.path.join('..', 'dataset', 'label_1215')
+    #               )
 
-    genTxtTrainingSplit(imgFolder=os.path.join('..', 'dataset', 'additional_images_3'),
-                        labelFolder = os.path.join('..', 'dataset', 'additional_label_3'),
-                        fTrain = open(os.path.join('..', 'dataset', 'additional_3_train.txt'), 'w'),
-                        fVal = open(os.path.join('..', 'dataset', 'additional_3_val.txt'), 'w'))
+    genTxtTrainingSplit(imgFolder=os.path.join('..', 'dataset', 'image_1215'),
+                        labelFolder = os.path.join('..', 'dataset', 'label_1215'),
+                        fTrain = open(os.path.join('..', 'dataset', 'train_1215.txt'), 'w'),
+                        fVal = open(os.path.join('..', 'dataset', 'val_1215.txt'), 'w'))
 
     # genTxtTrainingSplit(imgFolder=os.path.join('..', 'dataset', 'images'),
     #                     labelFolder=os.path.join('..', 'dataset', 'label'),

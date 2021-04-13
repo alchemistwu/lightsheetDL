@@ -2,4 +2,8 @@
 **/weights
 **/result
 **/figs
+**/weights_backup
+**/.idea
+.DS_Store
+.idea
 
